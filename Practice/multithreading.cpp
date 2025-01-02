@@ -97,9 +97,25 @@
 // prevents std:thread's destructor calling std::terminate()
 // this is known as joining: program can continue after thread obj is destroyed
 
+// passing args to threads
+// std::thread thr(func_name, args);
+// std::thread object owns the arguments
+// lvalue args are passed by value
+// rvalue args are passed by move 
+// it is safe to call str.empty() on str that has been moved using std::move
+// use reference wrapper std::ref() for passing by reference, std::cref() for const ref
+// beware of dangling refs make sure the ref is valid as long as thread is using it 
+//   works similar to bind, it wraps around a reference 
+// we can use member function as the entry point for the thread, requires an object of the class
+//  class greeter{ public: void hello();} greeter greet; 
+//  std::thread thr(&greeter::hello, &greet); // pass both member function pointer and obj
+// we can use lambda with capture as well
+//  std::thread thr( [&i]() {i *=2;} );
 
-void hello() {
-	std::cout << "hello from thread " << std::endl;
+
+void hello(std::string& str) {
+	std::cout << "hello from thread " << str << std::endl;
+	str.assign("ghost of sparta");
 }
 
 void fizzbuzz()
@@ -129,11 +145,15 @@ void fizzbuzz()
 	}
 }
 
+
 int main()
 {
-	//std::thread thr(hello);
-	std::thread thr2(fizzbuzz);
-	//thr.join();
-	thr2.join();
+	std::string str("God hand!");
+	std::cout << "current string value : " << str << std::endl;
+	std::thread thr(hello, std::ref(str));
+	//std::thread thr2(fizzbuzz);
+	thr.join();
+	std::cout << "after thread string value : " << str << std::endl;
+	//thr2.join();
 	return 0;
 }

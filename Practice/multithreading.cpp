@@ -112,6 +112,42 @@
 // we can use lambda with capture as well
 //  std::thread thr( [&i]() {i *=2;} );
 
+// multi threaded program on single processor is implemented by "time slicing"
+// each thread runs on the CPU for a short time
+// this switching between threads is done very quickly so threads appear to run concurrently
+// done using thread scheduler of OS using pre-emptive task switching/ cooperative task switching
+// requires context switch, save processor state(current processor registers, instruction pointer etc.) and loading
+// processor cannot execute any instructions during a context switch
+
+// single processor + cache
+// to handle problem with memory latency(time taken between request and response) cache was used
+// when first time data is requested it is copied to cache and then goes to cpu and next time it is accessed through cache
+// the CPU writes to cache and then cache writes to memory, so cpu time is saved
+// cache memory is close to cpu and uses static RAM so is fast
+// cache hit:, cache miss
+// cache controller manages cache 
+
+// multiple processors
+//  multiple sockets, multiple cores, 
+//  hyperthreads: duplicate some of the circuitry within a processor core, enough to run a seperate thread with its own stack
+//  additional caches and registers
+// multi level cache
+//  L1 cache : private to each processor, as close to core as possible(4 cycles)
+//  L2 cache : usually private to each core(12 cycles)
+//  L3 cache : shared by all the cores on the same socket(26-37) (mainmem ~300)
+//  cache controller : coordinates the caches(cache coherency), monitors data changes
+// Optimizations:
+//  Pre-fetcher : looks at incoming instructions, fetches data before it is needed
+//  store buffer : between core and L1 cache, modified data written to this buff
+//  core can proceed to next instruction : does not need to wait for L1 cache
+
+// Synchronization issues
+//  different threads execute on different cores and may share data, can cause sync issues
+//  each core that has access to data will have a seperate copy of data in cache, if one modifies the data then data will be different in every cache
+//     can make data incosistent across cores
+//  mutex and atomic variables can be used to sync data
+
+
 
 void hello(std::string& str) {
 	std::cout << "hello from thread " << str << std::endl;

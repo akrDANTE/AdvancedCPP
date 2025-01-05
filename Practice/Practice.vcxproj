@@ -140,6 +140,7 @@
     <ClCompile Include="InheritancePolymorphism.cpp" />
     <ClCompile Include="miscllenious.cpp" />
     <ClCompile Include="moveSemantics.cpp" />
+    <ClCompile Include="mtSharedDataHandling.cpp" />
     <ClCompile Include="multithreading.cpp" />
     <ClCompile Include="SmartPointers.cpp" />
     <ClCompile Include="specialMemberFuncs.cpp" />

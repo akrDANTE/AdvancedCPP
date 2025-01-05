@@ -147,11 +147,83 @@
 //     can make data incosistent across cores
 //  mutex and atomic variables can be used to sync data
 
+// System Thread interface
+//  std::thread uses system's thread implementation
+//  thread priority/affinity(pin thread to specific core) not available
+//  thr.native_handle() : used internally by system's thread implementation
+//    needed when making calls into the implementation's api
+//  std::thread id: guaranteed to be unique, if two thread ids are equal the related objs are identical
+//    could be used to store std::thread objs in associative containers
+//    new thread may get teh ID of an earlier thread which has completed
+//    std::this_thread.get_id();
+//    thr.get_id();
+//    std::this_thread::sleep_for(std::chrono::seconds(2)); could sleep for more than 2secs
+
+// std::thread class
+//   implmented using RAII
+//   std::thread object has ownership of execution thread(only one obj can be bound at a time to a thread)
+//   move_only class : transfers ownership of execution thread
+//   passing a thread object should be pass by move : using std::move(obj) or std::thread(...)
+//   returning is straight forward, compiler automatically moves object
+//   each thread has its own execution stack which is unwound when the thread throws an exception
+//    if no handler is found program is terminated
+//    other threads cannot catch the exception
+// detaching thread
+//   detach() will cause child thread to run until it completes or the program terminates
+//   parent keeps on executing
+//   when an execution thread is detached, thread object is no longer associated with it
+//   destructor will not call std::terminate()
+//   we must make sure that join or detach is called in every branch to avoid resource leak
+//     because in case exception in calling thread may cause resource leak
+//   RAII solution for managing thread:
+//     wrap the std::thread object in a class
+//     the class's destructor calls join() 
+//     join() can only be called once
+//     joinable() member function can be used to check if join/detach already been called
+//  interruptible_thread can be created in c++ as killing is not available
+//  native_handle can be used to make OS stop the execution thread
+//  c++20 has jthrad join() call is optional, supports cooperative interruption
+
+// data sharing between threads
+//  global/static for global thread funcs
+//  static clas member for class member threads
+//  variable capture by lambda threads 
+// data race occurs when:
+//  two or more threads access the same memory location and atleast one modifies it
+//  potentially conflicting access to same memory location
+//  only safe if threads are synchronized
+//    one thread accesses the memory location at a time, other wait until safe to access
+//    in effect threads execute sequentially while they access it
+//  data race causes undefined behaviour
+// Race condition
+//   the outcome is affected by timing changes
+//   data race is special case of race condition
+// memory location is a scalar object : a built in variable, pointer, element in container, a struct class member which is scalar
+//    a series of contiguous bitfields within the same word unless they contain zero-length bitfield
+//    compound objects like C++ STL containers are memory locations
+//    for our own types classes can provide their own synchronization
+//    calling a sequence of member funcs may be problematic, usually better to implement them as memory locations
+//  consequences of data race can be : incorrect results, program flow, torn writes and reads, improper construction or destruction of objs
+//  compilers can optimize switch case statements to jump tables instead of if else statements
+// avoiding data races
+//   avoid shared data between different threads
+//   synchronize the threads, impose ordering on how threads access the shared data
+//     increaseed execution time and program complexity
+
 
 
 void hello(std::string& str) {
 	std::cout << "hello from thread " << str << std::endl;
 	str.assign("ghost of sparta");
+	try {
+		throw 10;
+	}
+	catch (...)
+	{
+		std::cout << "error : sleeping for 5 seconds" << std::endl;
+		std::this_thread::sleep_for(std::chrono::seconds(5));
+	}
+	
 }
 
 void fizzbuzz()
@@ -182,14 +254,19 @@ void fizzbuzz()
 }
 
 
-int main()
+int main_mth()
 {
 	std::string str("God hand!");
 	std::cout << "current string value : " << str << std::endl;
 	std::thread thr(hello, std::ref(str));
+
+	std::cout << "Thread handle is : " << thr.native_handle() << std::endl;
+	std::cout << "Thread id is : " << thr.get_id() << std::endl;
 	//std::thread thr2(fizzbuzz);
-	thr.join();
+	thr.detach();
 	std::cout << "after thread string value : " << str << std::endl;
+	std::cout << "Thread handle is : " << thr.native_handle() << std::endl;
+	std::cout << "Thread id is : " << thr.get_id() << std::endl;
 	//thr2.join();
 	return 0;
 }

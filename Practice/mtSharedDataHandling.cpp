@@ -155,12 +155,79 @@
 //      do not lock individual elements
 //      need to lock neighbouring elements in a single operation
 
-// 
+// Thread coordination
+//   introduce a manager to coordinate between threads
+//   example of multiple thread:
+//      one thread downloading data from internet
+//      one thread shows progress bar
+//      one thread processes the downloaded data
+//   Hot thread
+//      we need to lock mutex while checking a bool
+//         std::lock_guard lg(data_mutex); while(!update_progress) {
+//      the thread will run flat out, processor core will run at 100% and other threads cannot do useful work
+//      the fetcher thread cannot set the flag
+//      to avoid use: std::unique_lock ulk(data_mutex);
+//        while(!update_progress) {
+//			ulk.unlock();
+//			std::this_thread::sleep_for(10ms);
+//			ulk.lock();} 
+//      sleeping allows other threads to use the core, fetcher thread can set the flag
+//      better solution instead of mutex is to use a system to which the thread A tells its waiting, thread B tells it's done, system wakes up thread A and resumes
+//        implemented using condition variable in c++
+
+// Condition Variables
+//    we use a mutex to protect critical sections, condition variable also uses this same mutex
+//    std::condition_variable : <condition_variable>
+//    wait() : takes an arg of type unique_lock, it unlocks its arg and blocks the thread until a notif is received
+//    wait_for() and wait_until() : Re-lock their arg if a notif is not received in time
+//    notify_one() wake up one of the waiting threads, scheduler decides which one
+//    notify_all() wake up all the waiting threads
+//    reader() {
+//		std::unique_lock<std::mutex> uniq_lck(mut);
+///     cond_var.wait(uniq_lck); // will unlock the mutex and wait 
+//		// wait until condition variable wakes up the thread and start processing
+//		// mutex is taken by this thread here
+//    }
+//    writer() {
+//		{
+//		std::lock_guard<std::mutex> lck(mut);
+//      sdata = "populated";
+//		}// release the lock
+//		// notify the condition variable
+//		cond_var.notify_one();
+//	  }
+//    only works with std::mutex does not work with timed_mutex
+//    std::condition_variable_any works with any mutex-like object(more overhead)
+//
+// condition var with predicate
+//    there could be a problem when writer calls notify before reader calls wait, which will make reader wait forever
+//      this is known as lost wakeup
+//    there is another problem called spurious wakeup which means reader thread wakes before notif due to the variable for which it's waiting
+//      this is due to how condition variable is implemented
+//    to solve this issue: wait() with predicate as second optional arg
+//      predicate checks a shared bool which is initially false and set to true when writer notifies
+//      reader thread will call this predicate, it will only call wait() if the predicate returns false
+//      also available for wait_for() and wait_until()
+//	  reader() {
+//		unique-lock lk(mut)
+//      cond_var.wait(lk, [] {return condition;});
+//    }
+//    writer() {
+//		{ lock-guard lk(mut)
+//		  data="populated"
+//		  condition = true;
+//      }
+//      cond_var.notify_one();
+//    }
+//      
+
+
 
 std::mutex mtx;
 std::string glob("what");
 std::vector<std::string> vec;
 auto i = std::back_inserter(vec);
+bool updated_value = false;
 
 void hello(std::string arg) {
 	std::cout << "Started " << std::this_thread::get_id() << std::endl;
@@ -168,10 +235,38 @@ void hello(std::string arg) {
 	*i = arg;
 }
 
+
+void reader()
+{
+	std::cout << "Reader thread is waiting... " << std::endl;
+	std::unique_lock<std::mutex> ulock(mtx); // locks the mutex by default
+	while (!updated_value)
+	{
+		ulock.unlock();
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		ulock.lock();
+	}
+	std::cout << "got the updated value " << glob << std::endl;
+}
+
+void writer()
+{
+	std::lock_guard<std::mutex> lck(mtx);
+	std::cout << "Writing the data here in writer thread" << std::endl;
+	std::this_thread::sleep_for(std::chrono::seconds(5));
+	updated_value = true;
+	glob.assign("fast faster fastest");
+}
+
 int main()
 {
 	std::cout << "hello " << std::endl;
-	std::thread thr1(hello, "is");
+	std::thread read(reader);
+	std::thread write(writer);
+
+	read.join();
+	write.join();
+	/*std::thread thr1(hello, "is");
 	std::thread thr2(hello, "going");
 	std::thread thr3(hello, "on?");
 
@@ -181,6 +276,6 @@ int main()
 
 
 	for (auto& s : vec)
-		std::cout << s << " ";
+		std::cout << s << " ";*/
 	return 0;
 }

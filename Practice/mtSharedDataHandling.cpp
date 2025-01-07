@@ -219,7 +219,50 @@
 //      }
 //      cond_var.notify_one();
 //    }
+//    condition variables are useful for creating threadsafe data queue
+
+// futures and promises
+//  c++ thread does not provide a way to return value
+//  classes for transfering data between threads
+//  together these set up shared state between threads
+//  the shared state can transfer data from one thread to another, no shared data var, no explicit locking
+//	producer-consumer model is used
+//    a producer thread will generate result and store in the shared state
+//    a consumer thread waits for the result and reads from shared state
+//    std::promise associated with producer
+//    std::future associated with consumer : consumer calls a member func of future obj and func is blocking until the result becomes available
+//     the member function reads the result from the shared state and returns the result
+//  also work with exceptions : promise stores the exception in shared state which is rethrown in consumer thread by future's func
+//    producer throws exception to consumer
+//  std::future : <future> represents a result that is not yet available
+//     works with many different async objs and ops not just std::promise
+//     future obj is not usually created directly, obtained from std::promise obj or returned by async op
+//     std::future<type of the data that will be returned>
+//     get() member func obtains result when ready, blocks until op is complete
+//     wait(), wait_for(), wait_until() block but do not return a result
+//     move only class, cannot be copied
+//  std::promise : <future> : parameter is type of the result
+//     constructor : creates an associated std::future object, sets up the shared state with it
+//     get_future() member func  : returns the associated std::future
+//     std::promise<int> prom; auto fut = prom.get_future();
+//     set_value() : sets the result to its arg
+//     set_exception() : indicates exception and can be stored in shared state
+//  parent thread : creates std::promise obj
+//  producer thread : takes promise obj ref as arg, calls set_value or set_exception
+//  consumer thread : takes associated future obj ref as arg, calls get() 
+//  in producer we can use catch(...) handler, and pass std::current_exception() result (gives pointer to exception object) to set_exception()
+//  in consumer thread try-catch to handle exception
+//  to throw exception by ourselves in producer, use std::make_exception_ptr(exception obj) and pass result to set_exception
+//  std::future is designed to work with single consumer thread, will fail with multiple consumers
+//  we can use std::shared_future for multiple consumer case
+//    can be copied, all copies share the same state with std::promise
+//    calling get() or wait() from different copies is safe
+//    move a existing future to shared future :
+//      std::shared_future<int> shared_fut = std::move(fut) / fut.share() / prom.get_future()
+//    in consumer change arg to shared_future obj ref and pass using std::ref(shared_fut)
 //      
+//  
+
 
 
 

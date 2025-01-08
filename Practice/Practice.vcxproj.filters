@@ -66,6 +66,9 @@
     <ClCompile Include="mtSharedDataHandling.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="mtAtomicVars.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="languages.txt" />

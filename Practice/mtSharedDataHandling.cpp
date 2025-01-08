@@ -301,7 +301,7 @@ void writer()
 	glob.assign("fast faster fastest");
 }
 
-int main()
+int main_shareddata()
 {
 	std::cout << "hello " << std::endl;
 	std::thread read(reader);

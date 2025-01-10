@@ -4,6 +4,7 @@
 #include<future>
 #include<condition_variable>
 #include<mutex>
+#include<list>
 
 // Integer ops and threads
 //   usually single instruction (true on x64), provided data aligned correctly and fits single word
@@ -57,6 +58,92 @@
 //          usually used only in OS and libs
 //          often used to implement std::mutex (hybrid mutex)
 
+// Lockless programming:
+//    threads execute  critical sections without using OS locking facilities
+//    avoid or reduce drawbacks of locks
+//      race conditions caused by forgetting/ wrong mutex
+//      lack of composability
+//      risk of deadlock
+//      high overhead
+//      lack of scalability
+//      code complexity and increased overhead
+//    advantages:
+//      threads never block each other
+//      no possiblity of deadlock or livelock
+//      if a thread is blocked, other threads can continue to execute
+//      useful if work must be completed within a time limit eg real time systems
+//    disadvantages:
+//      very difficult to write correct and efficient code
+//      extra complexity makes it unsuitable for many applications
+//      useful in performance-critical code, such as infrastructure
+//      should be used only if
+//        a data structure in program is subject to high contention upto unacceptable contention
+//        when lock-free version brings performance to acceptable levels
+//    Assumptions in programming with locks
+//     global state is consistent
+//        provided shared data is only accessed in locked section
+//        no other threads will se our changes until the lock is released
+//     Logical consitency
+//        when working inside a locked region, global state will not change
+//          ex: between evaluating an "if" statement and executing the body
+//     code order
+//        statements will execute in the same order as in the source code
+//    in lock free above assumptions do not hold
+//    transactional model is used : ACID
+//      Atomic/All or nothing : a transaction either completes succefully(commit) or fails and leaves everything as it was(rollback)
+//      Consistent : transaction takes teh DB from one consistent state to another, as seen by users the DB is never in inconsistent state
+//      Isolated : two transactions cannot work on same data simultaneously
+//      Durable : once transaction commits, it cannot be overwritten until next transaction sees the result of the commit
+//    Atomic Instructions follows ACID properties
+//    lock free programming needs thoughts about:
+//        how do concurrent writers interact with each other?
+//        how do concurrent writers interact with readers?
+//    use atomic pointer for double checked initialization of lazily initialized shared variable
+//    
+//   Lock free queue
+//     simple queue with no internal/external locks, only accessed by two threads
+//     carefully designed : Consumer and producer threads never work on adjacent elements
+//        two threads always work on different parts of the queue
+//     two iterators : iHead(before oldest data) and iTail(after latest data)
+//     consumer thread does not modify the queue, it only makes it invalid by incrementing iHead
+//     producer inserts elements on iTail and also erases any elements which the consumer has removed
+//     the two threads never overlap : iHead and iTail never refer to same element
+//     even this can have data race with iHead and iTail as they are accessed by multiple threads
+template<typename T>
+struct LockFreeQueue
+{
+private:
+	std::list<T> list;
+	typename std::list<T>::iterator iHead, iTail;
+public:
+	LockFreeQueue() {
+		list.push_back(T()); // dummy element
+		iHead = list.begin();
+		iTail = list.end();
+	}
+
+
+	bool consume(T& t)
+	{
+		auto iFirst = iHead;
+		++iFirst;
+		if (iFirst != iTail)
+		{
+			iHead = iFirst;
+			t = *iHead;
+			return true;
+	 	}
+		return false;
+	}
+
+	void produce(const T& t)
+	{
+		list.push_back(t);
+		iTail = list.end();
+		list.erase(list.begin(), iHead);
+	}
+};
+
 
 std::atomic<int> curr = -1;
 
@@ -67,7 +154,7 @@ void threadd()
 
 
 
-int main()
+int main_atomic()
 {
 	std::vector<std::thread> threads;
 	for (int i = 0; i <= 10; i++)

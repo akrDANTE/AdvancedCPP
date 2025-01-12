@@ -99,11 +99,3 @@
 //   in c++17 if exception is thrown, std::terminate() is called and program is terminated
 //   extra overhead for execution policy as threads may start and needs to be managed
 
-
-
-int main()
-{
-	
-	
-	return 0;
-}
